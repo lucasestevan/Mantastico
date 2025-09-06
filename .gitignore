@@ -1,0 +1,6 @@
+/vendor/ 
+/logs/ 
+.env 
+*.log 
+/admin/uploads_pendentes/ 
+/assets/images/
