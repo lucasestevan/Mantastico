@@ -75,36 +75,41 @@ class EmailNotification {
             
             $mailer->Subject = "Novo Pedido Aprovado {$pedido['codigo_pedido']}";
             
-            // Lista de produtos do pedido
+            // Inicializa a lista de produtos
             $listaProdutos = "";
             
-            // Verifica se produtos é uma string JSON e decodifica
-            $produtos = is_string($pedido['produtos']) ? json_decode($pedido['produtos'], true) : $pedido['produtos'];
-            
-            if (!empty($produtos) && is_array($produtos)) {
-                foreach ($produtos as $item) {
-                    // Verifica se o item tem o formato esperado
-                    if (is_array($item) && isset($item['id_produto'])) {
-                        $listaProdutos .= "
-                        - ID: {$item['id_produto']}";
-                        
-                        if (isset($item['nome'])) {
-                            $listaProdutos .= ", Nome: {$item['nome']}";
+            // Verifica se produtos existe e não está vazio
+            if (!empty($pedido['produtos'])) {
+                // Decodifica se for string JSON
+                $produtos = is_string($pedido['produtos']) ? 
+                    json_decode($pedido['produtos'], true) : 
+                    (is_array($pedido['produtos']) ? $pedido['produtos'] : []);
+                
+                if (is_array($produtos) && !empty($produtos)) {
+                    foreach ($produtos as $item) {
+                        // Verifica se o item tem o formato esperado
+                        if (is_array($item) && isset($item['id_produto'])) {
+                            $listaProdutos .= "
+                            - ID: " . htmlspecialchars($item['id_produto'], ENT_QUOTES, 'UTF-8');
+                            
+                            if (isset($item['nome'])) {
+                                $listaProdutos .= ", Nome: " . htmlspecialchars($item['nome'], ENT_QUOTES, 'UTF-8');
+                            }
+                            
+                            if (isset($item['qtd'])) {
+                                $listaProdutos .= ", Quantidade: " . htmlspecialchars($item['qtd'], ENT_QUOTES, 'UTF-8');
+                            }
+                            
+                            if (isset($item['preco'])) {
+                                $listaProdutos .= ", Preço: " . self::formatarMoeda(floatval($item['preco']));
+                            }
+                            
+                            if (!empty($item['nome_pers'])) {
+                                $listaProdutos .= ", Personalização: " . htmlspecialchars($item['nome_pers'], ENT_QUOTES, 'UTF-8');
+                            }
+                            
+                            $listaProdutos .= "<br>";
                         }
-                        
-                        if (isset($item['qtd'])) {
-                            $listaProdutos .= ", Quantidade: {$item['qtd']}";
-                        }
-                        
-                        if (isset($item['preco'])) {
-                            $listaProdutos .= ", Preço: " . self::formatarMoeda($item['preco']);
-                        }
-                        
-                        if (!empty($item['nome_pers'])) {
-                            $listaProdutos .= ", Personalização: {$item['nome_pers']}";
-                        }
-                        
-                        $listaProdutos .= "<br>";
                     }
                 }
             } else {

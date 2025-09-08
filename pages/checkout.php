@@ -1,6 +1,13 @@
 <?php
 session_start();
-require_once '../config/database.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/database.php';
+
+// Carregar variáveis de ambiente
+if (file_exists(__DIR__ . '/../.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->load();
+}
 
 if (empty($_SESSION['carrinho'])) {
     header('Location: ../index.php');
@@ -13,8 +20,13 @@ $error_msg = '';
 $conn = null;
 $custo_personalizacao = 20;
 
-// Sua Public Key de Teste aqui
-$mercadoPagoPublicKey = "TEST-4a084f03-adc1-47c4-91c4-1d1f7d2729ee";
+// Obter a chave pública do Mercado Pago
+$mercadoPagoPublicKey = $_ENV['MERCADO_PAGO_PUBLIC_KEY'] ?? '';
+
+// Verificar se a chave pública está configurada
+if (empty($mercadoPagoPublicKey)) {
+    die('Erro: Chave pública do Mercado Pago não configurada.');
+}
 
 try {
     $conn = Database::getConnection();
@@ -320,51 +332,86 @@ try {
         });
 
         // --- LÓGICA DE BUSCA DE CEP ---
-        function buscarCEP(cep) {
+        async function buscarCEP(cep) {
             cep = cep.replace(/\D/g, '');
             if (cep.length !== 8) return;
             
+            // Mostra o loading
             cepLoading.style.display = 'block';
             
-            fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.erro) {
-                        alert('CEP não encontrado. Por favor, digite um CEP válido para continuar.');
-                        cepInput.value = "";
-                        ruaInput.value = "";
-                        bairroInput.value = "";
-                        cidadeInput.value = "";
-                        estadoInput.value = "";
-                    } else {
-                        console.log('Dados do CEP:', data); // Debug
-                        ruaInput.value = data.logradouro || '';
-                        bairroInput.value = data.bairro || '';
-                        cidadeInput.value = data.localidade || '';
-                        estadoInput.value = data.uf || '';
-                        ruaInput.readOnly = !!data.logradouro;
-                        bairroInput.readOnly = !!data.bairro;
-                        cidadeInput.readOnly = true;
-                        estadoInput.readOnly = true;
-                        numeroInput.focus();
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao buscar CEP:', error);
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+                
+                if (data.erro) {
+                    throw new Error('CEP não encontrado');
+                }
+                
+                console.log('Dados do CEP:', data);
+                
+                // Preenche os campos com os dados do CEP
+                if (ruaInput) ruaInput.value = data.logradouro || '';
+                if (bairroInput) bairroInput.value = data.bairro || '';
+                if (cidadeInput) cidadeInput.value = data.localidade || '';
+                if (estadoInput) estadoInput.value = data.uf || '';
+                
+                // Foca no campo de número após preencher o CEP
+                if (document.getElementById('numero')) {
+                    document.getElementById('numero').focus();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Erro ao buscar CEP:', error);
+                
+                // Limpa os campos de endereço
+                if (ruaInput) ruaInput.value = '';
+                if (bairroInput) bairroInput.value = '';
+                if (cidadeInput) cidadeInput.value = '';
+                if (estadoInput) estadoInput.value = '';
+                
+                if (error.message === 'CEP não encontrado') {
+                    alert('CEP não encontrado. Por favor, verifique o número e tente novamente.');
+                } else {
                     alert('Não foi possível buscar o CEP. Verifique sua conexão e tente novamente.');
-                })
-                .finally(() => {
-                    cepLoading.style.display = 'none';
-                });
+                }
+                
+                // Foca de volta no campo de CEP
+                cepInput.focus();
+                return false;
+            } finally {
+                cepLoading.style.display = 'none';
+            }
         }
 
-        // Evento para buscar CEP quando o campo perde o foco
-        cepInput.addEventListener('blur', () => buscarCEP(cepInput.value));
+        // Formata o CEP enquanto digita
+        cepInput.addEventListener('input', function(e) {
+            console.log('Evento input do CEP disparado');
+            let value = e.target.value.replace(/\D/g, '');
+            console.log('Valor do CEP após remover não-números:', value);
+            
+            if (value.length > 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5, 8);
+                console.log('Valor do CEP após formatação:', value);
+            }
+            e.target.value = value;
+            
+            // Busca automaticamente quando tiver 8 dígitos (sem contar o hífen)
+            if (value.replace(/\D/g, '').length === 8) {
+                console.log('Buscando CEP:', value);
+                buscarCEP(value);
+            } else {
+                console.log('CEP incompleto:', value);
+            }
+        });
         
-        // Evento para buscar CEP enquanto digita (após 8 dígitos)
-        cepInput.addEventListener('input', (e) => {
-            const cep = e.target.value.replace(/\D/g, '');
+        // Busca quando o campo perde o foco (caso o usuário não tenha digitado o CEP completo)
+        cepInput.addEventListener('blur', () => {
+            console.log('Evento blur do CEP disparado');
+            const cep = cepInput.value.replace(/\D/g, '');
+            console.log('CEP no blur:', cep);
             if (cep.length === 8) {
+                console.log('Buscando CEP no blur:', cep);
                 buscarCEP(cep);
             }
         });
@@ -425,7 +472,9 @@ try {
         });
 
         // --- SCRIPT DO MERCADO PAGO ---
-        const mp = new MercadoPago('<?= $mercadoPagoPublicKey ?>');
+        const mp = new MercadoPago('<?= $mercadoPagoPublicKey ?>', {
+            locale: 'pt-BR'
+        });
         const bricksBuilder = mp.bricks();
         window.brickRendered = false; // Flag para controlar a renderização do brick
 

@@ -11,9 +11,22 @@ use MercadoPago\Exceptions\MPApiException;
 
 header('Content-Type: application/json');
 
-// Suas credenciais de teste do Mercado Pago
-MercadoPagoConfig::setAccessToken("TEST-4147091473469928-080413-d5ce3d5f3e0981e51e4d08c7bbbfad9a-152007619");
+// carregar as variáveis de ambiente
+if (file_exists(__DIR__ . '/../.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->load();
+}
 
+// Configurar o token de acesso do Mercado Pago
+$accessToken = $_ENV['MERCADO_PAGO_ACCESS_TOKEN'] ?? '';
+if (empty($accessToken)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Token de acesso do Mercado Pago não configurado.']);
+    exit;
+}
+
+// Configurar o SDK do Mercado Pago
+MercadoPagoConfig::setAccessToken($accessToken);
 $data = json_decode(file_get_contents("php://input"));
 
 if (!$data) {
