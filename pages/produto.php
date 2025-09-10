@@ -47,38 +47,172 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $nome ?> - Mantástico</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
-        .container { max-width: 1000px; margin: 40px auto; padding: 20px; background-color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 10px; flex-grow: 1; }
-        .produto-detalhe { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: flex-start; }
-        .galeria-produto { display: flex; flex-direction: column; gap: 10px; }
-        #imagem-principal { width: 100%; border-radius: 8px; border: 1px solid #eee; transition: opacity 0.3s ease; }
+        :root {
+            --cor-principal: #1a6b2f;
+            --cor-fundo: #f4f4f4;
+            --cor-texto: #212529;
+            --sombra: 0 2px 10px rgba(0,0,0,0.1);
+            --borda: 1px solid #e0e0e0;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body { 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background-color: var(--cor-fundo); 
+            margin: 0; 
+            padding: 0; 
+            color: var(--cor-texto);
+            line-height: 1.6;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 15px; 
+            width: 100%;
+        }
+        .produto-detalhe { 
+            display: grid; 
+            grid-template-columns: 1fr; /* Uma coluna por padrão para mobile */
+            gap: 20px; 
+            align-items: flex-start; 
+        }
+        @media (min-width: 768px) {
+            .produto-detalhe { 
+                grid-template-columns: 1fr 1fr; /* Duas colunas para desktop */
+                gap: 40px; 
+            }
+        }
+        .galeria-produto { 
+            flex: 1;
+            position: relative;
+            width: 100%;
+        }
+        #imagem-principal { 
+            width: 100%; 
+            max-width: 100%;
+            height: auto; 
+            border-radius: 4px; 
+            margin-bottom: 15px;
+            display: block;
+            aspect-ratio: 1/1;
+            object-fit: contain;
+            background: #f9f9f9;
+        }
         .miniaturas-container { display: flex; gap: 10px; flex-wrap: wrap; }
-        .miniatura { width: 80px; height: 80px; object-fit: cover; border: 2px solid #ccc; border-radius: 5px; cursor: pointer; transition: border-color 0.2s; }
-        .miniatura:hover, .miniatura.active { border-color: #2c5b2d; }
+        .miniaturas-container {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .miniatura { 
+            width: 60px; 
+            height: 60px; 
+            min-width: 60px;
+            object-fit: cover; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            border: 2px solid transparent;
+            background: #f9f9f9;
+        }
+        .miniatura:hover, .miniatura.active { 
+            border-color: var(--cor-principal);
+        }
+        .info-produto { 
+            flex: 1;
+            width: 100%;
+        }
         .produto-info h1 { font-size: 2.5em; margin-top: 0; }
-        .produto-info .preco { font-size: 2.2em; color: #2c5b2d; font-weight: bold; }
+        .produto-info .preco { 
+            font-size: 1.8em; 
+            color: var(--cor-principal); 
+            font-weight: bold; 
+            margin: 15px 0;
+        }
+        @media (min-width: 768px) {
+            .preco {
+                font-size: 2em;
+            }
+        }
         .info-adicional { font-size: 1.1em; color: #555; margin-bottom: 20px; line-height: 1.6; }
         .opcoes-form { display: flex; flex-direction: column; gap: 20px; }
+        .form-group { 
+            margin-bottom: 20px;
+            width: 100%;
+        }
         .form-group label { font-weight: bold; margin-bottom: 8px; }
         .opcoes-container { display: flex; gap: 10px; flex-wrap: wrap; }
         .opcoes-container input[type="radio"] { display: none; }
-        .opcoes-container label { display: flex; justify-content: center; align-items: center; border: 2px solid #ccc; cursor: pointer; transition: all 0.2s ease; font-weight: bold; }
-        .opcoes-container label:hover { border-color: #333; }
-        .tamanhos-container label { min-width: 45px; height: 45px; border-radius: 50%; padding: 5px; }
-        
-        /* --- ESTILO CORRIGIDO PARA BOTÕES DE PERSONALIZAÇÃO --- */
-        .personalizacao-container label {
-            padding: 10px 15px;
-            border-radius: 5px;
-            flex-grow: 1; /* Faz os botões ocuparem o espaço igualmente */
-            text-align: center;
-        }
-
+        .opcoes-container label { display: flex; justify-content: center; align-items: center; border: 2px solid #ccc; cursor: pointer; transition: all 0.2s ease; font-weight: bold; padding: 10px 15px; border-radius: 6px; }
+        .tamanhos-container label { width: 45px; height: 45px; border-radius: 50%; padding: 0; }
         .opcoes-container input[type="radio"]:checked + label { background-color: #2c5b2d; color: #fff; border-color: #2c5b2d; }
         #campos-personalizacao { display: none; flex-direction: column; gap: 15px; background-color: #f9f9f9; padding: 15px; border-radius: 5px; }
-        .form-group input[type="text"], .form-group input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
-        .btn-comprar { display: inline-block; background-color: #111; color: #fff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 1.2em; font-weight: bold; text-align: center; transition: background-color 0.3s; border: none; cursor: pointer; margin-top: 20px; }
-        .btn-comprar.disabled { background-color: #ccc; cursor: not-allowed; }
+        select, input[type="text"], input[type="number"] { 
+            width: 100%; 
+            padding: 12px 15px;
+            border: var(--borda);
+            border-radius: 6px; 
+            margin-bottom: 15px;
+            font-size: 1em;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: #fff;
+        }
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23333' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+            padding-right: 40px;
+        }
+        .btn-adicionar { 
+            background-color: var(--cor-principal); 
+            color: white; 
+            border: none; 
+            padding: 15px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 1.1em; 
+            font-weight: 600; 
+            transition: all 0.3s ease;
+            width: 100%;
+            display: block;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+        .btn-adicionar:hover { 
+            background-color: #145023; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        @media (min-width: 576px) {
+            .btn-adicionar {
+                max-width: 300px;
+                margin: 0 auto;
+            }
+        }
+
+        /* Ajustes para Mobile */
+        @media (max-width: 767px) {
+            .produto-info h1 { 
+                font-size: 1.8em; 
+            }
+            .produto-info .preco {
+                font-size: 1.5em;
+            }
+            .opcoes-container label {
+                padding: 8px 12px;
+                font-size: 0.9em;
+            }
+        }
+
         footer { text-align: center; padding: 20px; background: #111; color: white; margin-top: auto; }
     </style>
 </head>
@@ -122,14 +256,14 @@ $conn->close();
                     <div id="campos-personalizacao">
                         <div class="form-group">
                             <label for="nome-personalizado">Nome:</label>
-                            <input type="text" id="nome-personalizado" name="nome-personalizado" placeholder="Ex: RONALDO">
+                            <input type="text" id="nome-personalizado" name="nome-personalizado" placeholder="Ex: RONALDO" maxlength="12">
                         </div>
                          <div class="form-group">
                             <label for="numero-personalizado">Número (máx. 2 caracteres):</label>
                             <input type="number" id="numero-personalizado" name="numero-personalizado" maxlength="2" placeholder="Ex: 9">
                         </div>
                     </div>
-                    <a href="#" id="btn-adicionar-carrinho" class="btn-comprar disabled">Selecione um tamanho</a>
+                    <a href="#" id="btn-adicionar-carrinho" class="btn btn-adicionar disabled">Selecione um tamanho</a>
                 </form>
             </div>
         </div>
@@ -166,6 +300,10 @@ $conn->close();
         inputNumero.addEventListener('input', function() {
             // Remove qualquer caractere que não seja um número
             this.value = this.value.replace(/\D/g, '');
+            // Limita a 2 caracteres
+            if (this.value.length > 2) {
+                this.value = this.value.slice(0, 2);
+            }
         });
 
         function atualizarPrecoEFormulario() {

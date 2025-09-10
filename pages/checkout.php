@@ -77,8 +77,8 @@ try {
     <title>Finalizar Compra - Mantástico</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; padding: 20px 0; }
-        .checkout-container { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; margin: auto;}
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; padding: 5px; }
+        .checkout-container { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto;}
         h2, h3 { text-align: center; margin-bottom: 20px; }
         .total-valor { text-align: center; font-size: 1.2em; font-weight: bold; margin-bottom: 30px; }
         #form-checkout { display: flex; flex-direction: column; gap: 15px; }
@@ -86,7 +86,10 @@ try {
         .form-group label { margin-bottom: 5px; font-weight: bold; }
         .form-group input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
         .form-group input:read-only { background-color: #e9ecef; cursor: not-allowed; }
-        .form-row { display: flex; gap: 15px; }
+        .form-row { display: flex; flex-direction: column; gap: 15px; }
+        @media (min-width: 768px) {
+            .form-row { flex-direction: row; }
+        }
         .form-row .form-group { flex: 1 1 0; }
         hr { border: 1px solid #eee; margin: 30px 0; }
         #cep-loading { font-size: 0.8em; color: #009ee3; position: absolute; right: 10px; bottom: 10px; display: none; }

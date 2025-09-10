@@ -126,6 +126,7 @@ try {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $primary_filter_value ? htmlspecialchars(ucfirst($primary_filter_value)) : 'Catálogo' ?> - Mantástico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
@@ -156,9 +157,109 @@ try {
         .paginacao { margin-top: 40px; }
         .pagination .page-link { color: var(--cor-principal); }
         .pagination .page-item.active .page-link { background-color: var(--cor-principal); border-color: var(--cor-principal); }
+
+        /* Estilos para o header fixo e filtros mobile */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            background-color: #fff;
+        }
+
+        @media (max-width: 992px) {
+            .sticky-header {
+                position: fixed;
+                top: 0;
+                width: 100%;
+                background-color: #fff; /* Ensure it has a background */
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Optional: add a subtle shadow */
+            }
+            .main-content {
+                padding-top: 140px; /* Adjust based on header height */
+            }
+            .catalogo-container {
+                margin-top: 0; /* Remove top margin as header is fixed */
+            }
+        }
+
+        .mobile-filter-trigger {
+            display: none; /* Oculto no desktop */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--cor-principal);
+            color: #fff;
+            text-align: center;
+            padding: 10px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border: none;
+            border-radius: 25px 25px 0 0;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        @media (max-width: 767px) {
+            .produtos-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            .produto-info h3 {
+                font-size: 0.9rem;
+                min-height: 36px;
+            }
+            .produto-info .preco {
+                font-size: 1.2em;
+            }
+        }
+
+        .filter-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1030; /* Acima do conteúdo, abaixo do painel */
+        }
+
+        .filter-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80vh;
+            background-color: #fff;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1040;
+            padding: 20px;
+            overflow-y: auto;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .filter-panel.active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 992px) {
+            .catalogo-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                display: none; /* Oculta a sidebar original */
+            }
+            .mobile-filter-trigger {
+                display: block; /* Mostra o botão no mobile */
+            }
+        }
     </style>
 </head>
 <body>
+    <body>
     <?php include __DIR__ . '/includes/header.php'; ?>
 
     <main class="container catalogo-container">
@@ -169,7 +270,7 @@ try {
         <?php else: ?>
 
         <aside class="sidebar">
-            <form method="get" id="form-filtros">
+            <form method="get" id="form-filtros-desktop">
                 <?php if ($primary_filter_type): ?>
                     <input type="hidden" name="<?= $primary_filter_type ?>_principal" value="<?= htmlspecialchars($primary_filter_value) ?>">
                 <?php endif; ?>
@@ -186,26 +287,26 @@ try {
                         $is_checked = isset($_GET['categoria']) && in_array($cat_nome, (array)$_GET['categoria']);
                     ?>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="categoria[]" value="<?= htmlspecialchars($cat_nome) ?>" id="cat-<?= htmlspecialchars(md5($cat_nome)) ?>" 
+                        <input class="form-check-input" type="checkbox" name="categoria[]" value="<?= htmlspecialchars($cat_nome) ?>" id="cat-desktop-<?= htmlspecialchars(md5($cat_nome)) ?>" 
                             <?php if($is_checked || $is_primary) echo 'checked'; ?>
-                            <?php if($is_primary) echo 'disabled'; // Trava o checkbox do filtro principal ?>
+                            <?php if($is_primary) echo 'disabled'; ?>
                         >
-                        <label class="form-check-label" for="cat-<?= htmlspecialchars(md5($cat_nome)) ?>"><?= htmlspecialchars($cat_nome) ?></label>
+                        <label class="form-check-label" for="cat-desktop-<?= htmlspecialchars(md5($cat_nome)) ?>"><?= htmlspecialchars($cat_nome) ?></label>
                     </div>
                     <?php endwhile; ?>
                     <?php if ($categorias_disponiveis && $categorias_disponiveis->num_rows > 0 && $campeonatos_disponiveis && $campeonatos_disponiveis->num_rows > 0): ?><hr><?php endif; ?>
                     <?php if ($campeonatos_disponiveis && $campeonatos_disponiveis->num_rows > 0): ?><h5>Campeonatos</h5><?php endif; ?>
-                     <?php while($camp = $campeonatos_disponiveis->fetch_assoc()): 
+                     <?php mysqli_data_seek($campeonatos_disponiveis, 0); while($camp = $campeonatos_disponiveis->fetch_assoc()): 
                         $camp_nome = $camp['campeonato'];
                         $is_primary = ($primary_filter_type === 'campeonato' && strtolower($primary_filter_value) === strtolower($camp_nome));
                         $is_checked = isset($_GET['campeonato']) && in_array($camp_nome, (array)$_GET['campeonato']);
                     ?>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="campeonato[]" value="<?= htmlspecialchars($camp_nome) ?>" id="camp-<?= htmlspecialchars(md5($camp_nome)) ?>"
+                        <input class="form-check-input" type="checkbox" name="campeonato[]" value="<?= htmlspecialchars($camp_nome) ?>" id="camp-mobile-<?= htmlspecialchars(md5($camp_nome)) ?>"
                            <?php if($is_checked || $is_primary) echo 'checked'; ?>
                            <?php if($is_primary) echo 'disabled'; ?>
                         >
-                        <label class="form-check-label" for="camp-<?= htmlspecialchars(md5($camp_nome)) ?>"><?= htmlspecialchars($camp_nome) ?></label>
+                        <label class="form-check-label" for="camp-mobile-<?= htmlspecialchars(md5($camp_nome)) ?>"><?= htmlspecialchars($camp_nome) ?></label>
                     </div>
                     <?php endwhile; ?>
                 </div>
@@ -257,6 +358,54 @@ try {
         <?php endif; // Fim do else do $error_msg ?>
     </main>
 
+    <div class="filter-overlay"></div>
+    <button class="mobile-filter-trigger">Filtros</button>
+
+    <div class="filter-panel">
+        <form method="get" id="form-filtros-mobile">
+            <?php if ($primary_filter_type): ?>
+                <input type="hidden" name="<?= $primary_filter_type ?>_principal" value="<?= htmlspecialchars($primary_filter_value) ?>">
+            <?php endif; ?>
+            
+            <div class="filtro-widget">
+                <?php if (!empty($termo_busca)): ?>
+                    <input type="hidden" name="busca" value="<?= htmlspecialchars($termo_busca) ?>">
+                <?php endif; ?>
+                <h4>Filtros</h4>
+                <?php if ($categorias_disponiveis && $categorias_disponiveis->num_rows > 0): ?><h5>Categorias</h5><?php endif; ?>
+                <?php mysqli_data_seek($categorias_disponiveis, 0); while($cat = $categorias_disponiveis->fetch_assoc()): 
+                    $cat_nome = $cat['categoria'];
+                    $is_primary = ($primary_filter_type === 'categoria' && strtolower($primary_filter_value) === strtolower($cat_nome));
+                    $is_checked = isset($_GET['categoria']) && in_array($cat_nome, (array)$_GET['categoria']);
+                ?>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="categoria[]" value="<?= htmlspecialchars($cat_nome) ?>" id="cat-mobile-<?= htmlspecialchars(md5($cat_nome)) ?>" 
+                        <?php if($is_checked || $is_primary) echo 'checked'; ?>
+                        <?php if($is_primary) echo 'disabled'; ?>
+                    >
+                    <label class="form-check-label" for="cat-mobile-<?= htmlspecialchars(md5($cat_nome)) ?>"><?= htmlspecialchars($cat_nome) ?></label>
+                </div>
+                <?php endwhile; ?>
+                <?php if ($categorias_disponiveis && $categorias_disponiveis->num_rows > 0 && $campeonatos_disponiveis && $campeonatos_disponiveis->num_rows > 0): ?><hr><?php endif; ?>
+                <?php if ($campeonatos_disponiveis && $campeonatos_disponiveis->num_rows > 0): ?><h5>Campeonatos</h5><?php endif; ?>
+                 <?php mysqli_data_seek($campeonatos_disponiveis, 0); while($camp = $campeonatos_disponiveis->fetch_assoc()): 
+                    $camp_nome = $camp['campeonato'];
+                    $is_primary = ($primary_filter_type === 'campeonato' && strtolower($primary_filter_value) === strtolower($camp_nome));
+                    $is_checked = isset($_GET['campeonato']) && in_array($camp_nome, (array)$_GET['campeonato']);
+                ?>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="campeonato[]" value="<?= htmlspecialchars($camp_nome) ?>" id="camp-mobile-<?= htmlspecialchars(md5($camp_nome)) ?>"
+                       <?php if($is_checked || $is_primary) echo 'checked'; ?>
+                       <?php if($is_primary) echo 'disabled'; ?>
+                    >
+                    <label class="form-check-label" for="camp-mobile-<?= htmlspecialchars(md5($camp_nome)) ?>"><?= htmlspecialchars($camp_nome) ?></label>
+                </div>
+                <?php endwhile; ?>
+            </div>
+            <button type="submit" class="btn btn-success w-100 mt-3">Aplicar Filtros</button>
+        </form>
+    </div>
+
     <?php include __DIR__ . '/includes/footer.php'; ?>
 
     <?php
@@ -264,5 +413,23 @@ try {
         $conn->close();
     }
     ?>
-</body>
-</html>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterTrigger = document.querySelector('.mobile-filter-trigger');
+            const filterPanel = document.querySelector('.filter-panel');
+            const filterOverlay = document.querySelector('.filter-overlay');
+
+            function toggleFilterPanel() {
+                filterPanel.classList.toggle('active');
+                filterOverlay.style.display = filterPanel.classList.contains('active') ? 'block' : 'none';
+                document.body.style.overflow = filterPanel.classList.contains('active') ? 'hidden' : '';
+            }
+
+            if (filterTrigger) {
+                filterTrigger.addEventListener('click', toggleFilterPanel);
+            }
+            if (filterOverlay) {
+                filterOverlay.addEventListener('click', toggleFilterPanel);
+            }
+        });
+    </script>
